@@ -4,17 +4,23 @@ use bevy::{
     window::{Window, WindowResolution, WindowPlugin}
 };
 
-static WIDTH: f32 = 1600.0;
-static HEIGHT: f32 = 1000.0;
+static WIDTH: f32 = 2400.0;
+static HEIGHT: f32 = 1200.0;
 static N_BOIDS: i32 = 500;
 
 static PROTECTED_RANGE: f32 = 30.0;
 static AVOID_FACTOR: f32 = 1.0;
 
 static VISIBLE_RANGE: f32 = 200.0;
-static MATCHING_FACTOR: f32 = 0.1;
+static MATCHING_FACTOR: f32 = 0.01;
 
-static CENTERING_FACTOR: f32 = 0.1;
+static CENTERING_FACTOR: f32 = 0.05;
+
+static MARGIN: f32 = 100.0;
+static TURN_FACTOR: f32 = 5.0;
+
+static MAX_SPEED: f32 = 500.0;
+static MIN_SPEED: f32 = 100.0;
 
 #[derive(Component, Copy, Clone)]
 struct Boid {
@@ -61,8 +67,8 @@ fn setup(mut commands: Commands) {
             ..default()
         })
         .insert(Boid {
-            dx: 100.0,
-            dy: 100.0
+            dx: MIN_SPEED,
+            dy: MIN_SPEED
         });
     }
 }
@@ -129,17 +135,34 @@ fn update(time: Res<Time>, mut query: Query<(Entity, &mut Boid, &mut Transform)>
         boid.dx += (xpos_avg - transform.translation.x) * CENTERING_FACTOR;
         boid.dy += (ypos_avg - transform.translation.y) * CENTERING_FACTOR;
 
+        // Attempt to avoid screen edges
+        if transform.translation.x > (WIDTH / 2.0 - MARGIN) {
+            boid.dx -= TURN_FACTOR;
+        }
+        if transform.translation.x < (- WIDTH / 2.0 + MARGIN) {
+            boid.dx += TURN_FACTOR;
+        }
+        if transform.translation.y > (HEIGHT / 2.0 - MARGIN) {
+            boid.dy -= TURN_FACTOR;
+        }
+        if transform.translation.y < (- HEIGHT / 2.0 + MARGIN) {
+            boid.dy += TURN_FACTOR;
+        }
+
+        // Limit the speed
+        let speed: f32 = (boid.dx*boid.dx + boid.dy*boid.dy).sqrt();
+        if speed > MAX_SPEED {
+            boid.dx = (boid.dx / speed) * MAX_SPEED;
+            boid.dy = (boid.dy / speed) * MAX_SPEED;
+        }
+        if speed < MIN_SPEED {
+            boid.dx = (boid.dx / speed) * MIN_SPEED;
+            boid.dy = (boid.dy / speed) * MIN_SPEED;
+        }
+
         // Update position
         transform.translation.x += boid.dx * time.delta_seconds();
         transform.translation.y += boid.dy * time.delta_seconds();
-
-        // To make things more interesting we can randomly flip the direction of boids
-        // let mut rng = rand::thread_rng();
-        // let gen = Uniform::from(0.0..10.0);
-        // if gen.sample(&mut rng) < 0.01 {
-        //     boid.dx = -boid.dx;
-        //     boid.dy = -boid.dy;
-        // }
 
         // Keep boid on screen
         if transform.translation.x > WIDTH / 2.0 {
