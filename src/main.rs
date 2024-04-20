@@ -1,9 +1,12 @@
-use bevy::prelude::*;
+use bevy::{
+    prelude::*,
+    window::{Window, WindowResolution, WindowPlugin}
+};
 use bevy_flycam::{KeyBindings, MovementSettings, PlayerPlugin};
 use rand::distributions::{Distribution, Uniform};
 
 static X_WORLD: f32 = 50.0;
-static Y_WORLD: f32 = 20.0;
+static Y_WORLD: f32 = 30.0;
 static Z_WORLD: f32 = 50.0;
 
 static N_BOIDS: i32 = 500;
@@ -12,16 +15,16 @@ static R_BOIDS: f32 = 0.1;
 static MAX_SPEED: f32 = 10.0;
 static MIN_SPEED: f32 = 10.0;
 
-static PROTECTED_RANGE: f32 = 1.0;
+static PROTECTED_RANGE: f32 = 0.5;
 static AVOID_FACTOR: f32 = 1.0;
 
 static VISIBLE_RANGE: f32 = 10.0;
 static MATCHING_FACTOR: f32 = 0.01;
 
-static CENTERING_FACTOR: f32 = 0.05;
+static CENTERING_FACTOR: f32 = 0.007;
 
-static MARGIN: f32 = 2.0;
-static TURN_FACTOR: f32 = 1.0;
+static MARGIN: f32 = 5.0;
+static TURN_FACTOR: f32 = 0.5;
 
 #[derive(Component, Copy, Clone)]
 struct Boid {
@@ -32,11 +35,18 @@ struct Boid {
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                title: "Boids 3D".to_string(),
+                resolution: WindowResolution::new(2400.0, 1200.0),
+                ..default()
+            }),
+            ..default()
+        }))
         .add_plugins(PlayerPlugin)
         .insert_resource(MovementSettings {
-            sensitivity: 0.00015,
-            speed: 12.0
+            sensitivity: 0.000015,
+            speed: 20.0
         })
         .insert_resource(KeyBindings {
             move_ascend: KeyCode::KeyE,
@@ -54,13 +64,26 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>
 ) {
+    // Adding the ground
     commands.spawn(PbrBundle {
         mesh: meshes.add(Cuboid::new(X_WORLD, 0.1, Z_WORLD)),
-        material: materials.add(Color::WHITE),
+        material: materials.add(Color::SILVER),
             transform: Transform::from_xyz(0.0, 0.0, 0.0),
         ..default()
     });
 
+    // Adding a sun
+    commands.spawn(DirectionalLightBundle {
+        directional_light: DirectionalLight {
+            color: Color::WHITE,
+            illuminance: 2000.0,
+            ..default()
+        },
+        transform: Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_4)),
+        ..default()
+    });
+
+    // Adding boids
     let x_bound = X_WORLD / 2.0;
     let y_bound = Y_WORLD;
     let z_bound = Z_WORLD / 2.0;
