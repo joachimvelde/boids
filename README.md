@@ -1,6 +1,6 @@
 # Boids
 
-A simple implementation of boids using Bevy! .
+A simple implementation of boids using Bevy!
 
 
 ## 2D
